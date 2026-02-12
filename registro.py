@@ -58,7 +58,7 @@ if boton_registro:
             st.balloons()
             
             # --- REDIRECCIÓN AUTOMÁTICA A ZOOM ---
-            link_zoom = "https://us04web.zoom.us/j/82078030723?pwd=1R5UyWkRP2CnR5Lr2aZ2QKtbcWC8Xn.1" # <--- PEGA TU LINK AQUÍ
+            link_zoom = "https://us04web.zoom.us/j/75494309875?pwd=OOGKbP8tHZrZa6rKjoxYbDsP11FSPg.1" # <--- PEGA TU LINK AQUÍ
             js = f'<meta http-equiv="refresh" content="2; url={link_zoom}">'
             st.write(js, unsafe_allow_html=True)
             
@@ -67,3 +67,4 @@ if boton_registro:
     else:
 
         st.warning("Por favor completa los campos obligatorios (*)")
+
