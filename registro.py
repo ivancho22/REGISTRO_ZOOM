@@ -44,7 +44,7 @@ if boton_registro:
             with engine.begin() as conn:
                 query = text("""
                     INSERT INTO directorio_tratamiento 
-                    (contacto_nombre, institucion, email, habeas_data, observaciones) 
+                    (contacto_nombre, institucion, rol_cargo, email, habeas_data, canal_autorizacion) 
                     VALUES (:nom, :inst, :mail, :hab, :obs)
                 """)
                 conn.execute(query, {
@@ -68,5 +68,6 @@ if boton_registro:
     else:
 
         st.warning("Por favor completa los campos obligatorios (*)")
+
 
 
