@@ -23,11 +23,12 @@ engine = create_engine(
 # from tu_archivo_principal import engine 
 
 st.title("Registro de Asistencia y Tratamiento de Datos")
-st.subheader("Bienvenido al evento de MB Educación")
+st.subheader("Bienvenido al Curso Reforma Laboral de MB Educación")
 
 with st.form("registro_publico", clear_on_submit=True):
     nombre = st.text_input("Nombre Completo *")
-    institucion = st.text_input("Institución Educativa *")
+    institucion = st.text_input("Institución Educativa /Empresa /Asociacion *")
+    cargo = st.text_input(" Cargo en la Institución Educativa /Empresa /Asociacion*")
     email = st.text_input("Correo Electrónico")
     
     st.markdown("---")
@@ -67,4 +68,5 @@ if boton_registro:
     else:
 
         st.warning("Por favor completa los campos obligatorios (*)")
+
 
