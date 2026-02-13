@@ -28,7 +28,7 @@ st.subheader("Bienvenido al Curso Reforma Laboral de MB Educación")
 with st.form("registro_publico", clear_on_submit=True):
     nombre = st.text_input("Nombre Completo *")
     institucion = st.text_input("Institución Educativa /Empresa /Asociacion *")
-    cargo = st.text_input(" Cargo en la Institución Educativa /Empresa /Asociacion*")
+    rol_cargo = st.text_input(" Cargo en la Institución Educativa /Empresa /Asociacion*")
     email = st.text_input("Correo Electrónico")
     
     st.markdown("---")
@@ -44,15 +44,17 @@ if boton_registro:
             with engine.begin() as conn:
                 query = text("""
                     INSERT INTO directorio_tratamiento 
-                    (contacto_nombre, institucion, rol_cargo, email, habeas_data, canal_autorizacion) 
-                    VALUES (:nom, :inst, :mail, :hab, :obs)
+                    (contacto_nombre, institucion, , rol_cargo, email, habeas_data, canal_autorizacion) 
+                    VALUES (:nom, :inst, :rol, :mail, :hab, :cnal)
                 """)
                 conn.execute(query, {
                     "nom": nombre, 
                     "inst": institucion, 
-                    "mail": email, 
+                    "mail": email,
+                    "rol": rol_cargo,
                     "hab": 1 if acepta else 0,
-                    "obs": "Registro desde Webinar Zoom " + time.strftime("%d/%m/%Y")
+                    "cnal": "Registro Zoom, Curso Reforma Tributria" + time.strftime("%d/%m/%Y"),
+                    
                 })
             
             st.success("¡Registro exitoso! Redirigiendo a la sala de Zoom...")
@@ -68,6 +70,7 @@ if boton_registro:
     else:
 
         st.warning("Por favor completa los campos obligatorios (*)")
+
 
 
 
