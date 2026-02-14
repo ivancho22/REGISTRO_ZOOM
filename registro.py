@@ -6,6 +6,25 @@ from sqlalchemy import create_engine
 from sqlalchemy import create_engine, text
 import pandas as pd
 
+# Verificar si el usuario ya se registró previamente en este dispositivo
+ya_registrado = st.query_params.get("registro", "false") == "true"
+
+if ya_registrado:
+    st.success("✨ ¡Hola de nuevo! Ya detectamos tu registro previo.")
+    st.info("No necesitas llenar el formulario otra vez. Haz clic abajo para entrar a la clase:")
+    
+    link_zoom = "https://us04web.zoom.us/j/75494309875?pwd=OOGKbP8tHZrZa6rKjoxYbDsP11FSPg.1"
+    
+    if st.button("🚀 INGRESAR A ZOOM AHORA"):
+        js = f'<script>window.open("{link_zoom}", "_blank").focus();</script>'
+        st.write(js, unsafe_allow_html=True)
+    
+    if st.button("Necesito corregir mis datos"):
+        st.query_params.clear()
+        st.rerun()
+    
+    st.stop() # Esto detiene el resto del código para que no vea el formulario
+
 # 1. Cargar credenciales desde los Secrets de Streamlit
 creds = st.secrets["db_credentials"]
 DB_USER = creds["user"]
@@ -71,20 +90,28 @@ if boton_registro:
                     "cnal": "Registro Zoom, Curso Reforma Tributria" + time.strftime("%d/%m/%Y"),
                     
                 })
-            
+
+            # --- REDIRECCIÓN ACTUALIZADA ---
             st.success("¡Registro exitoso! Redirigiendo a la sala de Zoom...")
             st.balloons()
             
-            # --- REDIRECCIÓN AUTOMÁTICA A ZOOM ---
-            link_zoom = "https://us04web.zoom.us/j/75494309875?pwd=OOGKbP8tHZrZa6rKjoxYbDsP11FSPg.1" # <--- PEGA TU LINK AQUÍ
-            js = f'<meta http-equiv="refresh" content="2; url={link_zoom}">'
-            st.write(js, unsafe_allow_html=True)
+            # Guardamos en la URL que ya está registrado
+            st.query_params["registro"] = "true"
+
+            # --- REDIRECCIÓN AUTOMÁTICA A ZOOM ---            
+            link_zoom = "https://us04web.zoom.us/j/75494309875?pwd=OOGKbP8tHZrZa6rKjoxYbDsP11FSPg.1"
             
+            # Esperamos 2 segundos y redirigimos
+            time.sleep(2)
+            js = f'<meta http-equiv="refresh" content="0; url={link_zoom}">'
+            st.write(js, unsafe_allow_html=True)
+                        
         except Exception as e:
             st.error(f"Error técnico: {e}")
     else:
 
         st.warning("Por favor completa los campos obligatorios (*)")
+
 
 
 
