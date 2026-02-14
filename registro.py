@@ -6,25 +6,38 @@ from sqlalchemy import create_engine
 from sqlalchemy import create_engine, text
 import pandas as pd
 
-# Verificar si el usuario ya se registró previamente en este dispositivo
-ya_registrado = st.query_params.get("registro", "false") == "true"
+# --- Al inicio, después de los imports ---
+from streamlit_javascript import st_javascript
 
-if ya_registrado:
-    st.success("✨ ¡Hola de nuevo! Ya detectamos tu registro previo.")
-    st.info("No necesitas llenar el formulario otra vez. Haz clic abajo para entrar a la clase:")
+# Intentamos leer una marca en el almacenamiento local del navegador (LocalStorage)
+# Esto sobrevive aunque cierren la pestaña o apaguen el PC
+registro_previo = st_javascript("localStorage.getItem('mbeducacion_registro');")
+
+if registro_previo == "true":
+    st.success("✨ ¡Bienvenido de nuevo! Ya te encuentras registrado en este curso.")
+    st.info("Haz clic en el botón de abajo para ingresar directamente a la sala de Zoom.")
     
     link_zoom = "https://us04web.zoom.us/j/75494309875?pwd=OOGKbP8tHZrZa6rKjoxYbDsP11FSPg.1"
     
-    if st.button("🚀 INGRESAR A ZOOM AHORA"):
-        js = f'<script>window.open("{link_zoom}", "_blank").focus();</script>'
-        st.write(js, unsafe_allow_html=True)
+    # Usamos un link real estilizado como botón para evitar bloqueos del navegador
+    st.markdown(f"""
+        <a href="{link_zoom}" target="_blank" style="
+            text-decoration: none;
+            background-color: #2D8CFF;
+            color: white;
+            padding: 15px 25px;
+            border-radius: 10px;
+            font-weight: bold;
+            display: inline-block;
+            text-align: center;
+            width: 100%;
+        ">🚀 INGRESAR A LA REUNIÓN DE ZOOM</a>
+    """, unsafe_allow_html=True)
     
-    if st.button("Necesito corregir mis datos"):
-        st.query_params.clear()
+    if st.button("No soy yo / Registrar nuevos datos"):
+        st_javascript("localStorage.removeItem('mbeducacion_registro');")
         st.rerun()
-    
-    st.stop() # Esto detiene el resto del código para que no vea el formulario
-
+    st.stop()
 # 1. Cargar credenciales desde los Secrets de Streamlit
 creds = st.secrets["db_credentials"]
 DB_USER = creds["user"]
@@ -91,26 +104,25 @@ if boton_registro:
                     
                 })
 
-            # --- REDIRECCIÓN ACTUALIZADA ---
-            st.success("¡Registro exitoso! Redirigiendo a la sala de Zoom...")
+           # --- DENTRO DEL BLOQUE EXITOSO ---
+            st.success("¡Registro exitoso! Guardando preferencia...")
+            
+            # Guardamos la marca en el navegador permanentemente
+            st_javascript("localStorage.setItem('mbeducacion_registro', 'true');")
+            
             st.balloons()
-            
-            # Guardamos en la URL que ya está registrado
-            st.query_params["registro"] = "true"
-
-            # --- REDIRECCIÓN AUTOMÁTICA A ZOOM ---            
-            link_zoom = "https://us04web.zoom.us/j/75494309875?pwd=OOGKbP8tHZrZa6rKjoxYbDsP11FSPg.1"
-            
-            # Esperamos 2 segundos y redirigimos
             time.sleep(2)
-            js = f'<meta http-equiv="refresh" content="0; url={link_zoom}">'
-            st.write(js, unsafe_allow_html=True)
+            
+            # Redirección final
+            link_zoom = "https://us04web.zoom.us/j/75494309875?pwd=OOGKbP8tHZrZa6rKjoxYbDsP11FSPg.1"
+            st.markdown(f'<meta http-equiv="refresh" content="0; url={link_zoom}">', unsafe_allow_html=True)
                         
         except Exception as e:
             st.error(f"Error técnico: {e}")
     else:
 
         st.warning("Por favor completa los campos obligatorios (*)")
+
 
 
 
