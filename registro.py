@@ -33,11 +33,30 @@ with st.form("registro_publico", clear_on_submit=True):
     
     st.markdown("---")
     st.write("🔒 **Política de Tratamiento de Datos**")
-    st.caption("Al marcar la casilla, autoriza a MB Educación a utilizar sus datos para fines informativos y académicos según la Ley 1581 de 2012.")
-    acepta = st.checkbox("Acepto el tratamiento de mis datos personales")
+    # --- MÉTODO 2: VENTANA DESPLEGABLE ---
+    with st.expander("Leer Política completa de Tratamiento de Datos (Habeas Data)"):
+        st.markdown("""
+        ### MB EDUCACIÓN - AUTORIZACIÓN PARA EL TRATAMIENTO DE DATOS PERSONALES
+        
+        En cumplimiento de la **Ley 1581 de 2012** y el Decreto 1377 de 2013, le informamos que al registrarse en este evento académico, usted autoriza a **MB Educación** para:
+        
+        1. **Finalidad del Tratamiento:** Recolectar, almacenar y usar sus datos con el fin de gestionar su asistencia, enviar material académico, emitir certificados y grabaciones de las sesiones.
+        2. **Sesiones Virtuales:** Usted entiende y acepta que las sesiones a través de Zoom pueden ser grabadas con fines pedagógicos y de evidencia institucional.
+        3. **Derechos del Titular:** Usted tiene derecho a conocer, actualizar y rectificar sus datos personales en cualquier momento a través de nuestros canales de atención.
+        
+        ---
+        **DECLARACIÓN DE MB EDUCACIÓN:**
+        Nos comprometemos a no compartir, vender ni ceder su información a terceros sin su consentimiento expreso, garantizando la seguridad y confidencialidad de la información.
+        
+        *Para mayor información, puede solicitar el documento impreso a nuestro equipo administrativo.*
+        """)
+
+    st.caption("Al marcar la casilla, autoriza a MB Educación a utilizar sus datos según los términos expuestos anteriormente.")
+    acepta = st.checkbox("He leído y acepto el tratamiento de mis datos personales")
     
     boton_registro = st.form_submit_button("REGISTRARME E INGRESAR A ZOOM")
 
+# --- LÓGICA DE VALIDACIÓN ---
 if boton_registro:
     if nombre and institucion:
         try:
@@ -70,6 +89,7 @@ if boton_registro:
     else:
 
         st.warning("Por favor completa los campos obligatorios (*)")
+
 
 
 
