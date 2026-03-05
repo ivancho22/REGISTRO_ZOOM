@@ -17,16 +17,15 @@ except Exception as e:
     conexion_db_exitosa = False
     engine = None
 
-# --- 2. CAPTURA DEL EVENTO DINÁMICO (LA MAGIA) ---
-# Leemos el slug desde la URL (?curso=slug)
+# --- 2. CAPTURA DEL EVENTO DINÁMICO ---
 slug_url = st.query_params.get("curso")
 
 if not slug_url:
-    st.error("⚠️ Enlace no válido. Por favor, utiliza el link oficial proporcionado por MB Educación.")
+    st.error("⚠️ Enlace no válido. Por favor, utiliza el link oficial de MB Educación.")
     st.stop()
 
-# --- 3. BUSCAR INFORMACIÓN DEL EVENTO EN LA BASE DE DATOS ---
-@st.cache_data(ttl=60) # Cache de 1 minuto para no saturar la DB
+# --- 3. BUSCAR INFORMACIÓN DEL EVENTO ---
+@st.cache_data(ttl=30) # Reducimos a 30 seg para mayor precisión en cupos
 def obtener_datos_evento(slug):
     if not engine: return None
     try:
@@ -39,71 +38,79 @@ def obtener_datos_evento(slug):
 evento = obtener_datos_evento(slug_url)
 
 if not evento:
-    st.error("❌ El evento solicitado no existe o ya no se encuentra disponible.")
+    st.error("❌ El evento solicitado no existe o ya finalizó.")
     st.stop()
 
-# Asignación de variables desde la base de datos
+# Asignación de variables desde DB
 ID_REUNION = evento.slug
 NOMBRE_EVENTO = evento.titulo_curso
 LINK_ZOOM = evento.link_zoom
-LINK_YOUTUBE = evento.link_youtube if evento.link_youtube else "https://www.youtube.com/@mbeducacion"
-CUPO_MAXIMO = evento.capacidad_max
+# Si no hay link de Youtube, usamos el canal general por defecto
+LINK_YOUTUBE = evento.link_youtube if evento.link_youtube else "https://www.youtube.com/@mbeducacion/live"
+CUPO_MAXIMO = evento.capacidad_max if evento.capacidad_max else 100
 
-# --- 4. VERIFICAR REGISTRO PREVIO Y CONTEO ---
+# --- 4. VERIFICAR REGISTRO PREVIO Y CONTEO REAL ---
 try:
     registro_previo = st_javascript(f"localStorage.getItem('mbeducacion_registro_{ID_REUNION}');")
 except:
     registro_previo = None
 
-conteo_actual = 0
-if conexion_db_exitosa:
-    try:
-        with engine.connect() as conn:
-            result = conn.execute(text("""
-                SELECT COUNT(*) FROM directorio_tratamiento 
-                WHERE canal_autorizacion LIKE :filtro
-            """), {"filtro": f"%{ID_REUNION}%"})
-            conteo_actual = result.scalar()
-    except:
-        conteo_actual = 0
+def obtener_conteo_real():
+    if conexion_db_exitosa:
+        try:
+            with engine.connect() as conn:
+                # Contamos exactamente cuántos registros tienen este SLUG en el canal de autorización
+                result = conn.execute(text("""
+                    SELECT COUNT(*) FROM directorio_tratamiento 
+                    WHERE canal_autorizacion LIKE :filtro
+                """), {"filtro": f"%{ID_REUNION}%"})
+                return result.scalar()
+        except:
+            return 0
+    return 0
 
-# Determinar destino
+conteo_actual = obtener_conteo_real()
+
+# Lógica de Semáforo (Zoom o Youtube)
 if conteo_actual >= CUPO_MAXIMO:
     link_destino = LINK_YOUTUBE
-    mensaje_cupo = "⚠️ ¡Sala de Zoom llena! Podrás ver la transmisión en vivo por YouTube."
+    mensaje_cupo = "🚀 ¡Sala de Zoom llena! Accede a la transmisión oficial en YouTube Live."
+    color_alerta = "orange"
 else:
     link_destino = LINK_ZOOM
-    mensaje_cupo = "✨ Tienes un cupo reservado en la sala de Zoom."
+    mensaje_cupo = "✅ ¡Cupo disponible en Zoom! Podrás interactuar en vivo."
+    color_alerta = "green"
 
 # --- 5. VISTA PARA USUARIOS YA REGISTRADOS ---
 if registro_previo == "true":
     st.title(NOMBRE_EVENTO)
-    st.success("✨ ¡Bienvenido de nuevo! Ya te encuentras registrado.")
+    st.success("✨ ¡Hola de nuevo! Ya estás registrado para este evento.")
     st.info(mensaje_cupo)
     
     st.markdown(f"""
         <a href="{link_destino}" target="_blank" style="
             text-decoration: none; background-color: #2D8CFF; color: white;
-            padding: 15px 25px; border-radius: 10px; font-weight: bold;
+            padding: 18px 25px; border-radius: 12px; font-weight: bold;
             display: inline-block; text-align: center; width: 100%;
-        ">🚀 INGRESAR A LA TRANSMISIÓN</a>
+            font-size: 20px; box-shadow: 0px 4px 10px rgba(0,0,0,0.1);
+        ">ENTRAR A LA CLASE AHORA</a>
     """, unsafe_allow_html=True)
     
-    if st.button("No soy yo / Registrar nuevos datos"):
+    if st.button("Actualizar mis datos / No soy yo"):
         st_javascript(f"localStorage.removeItem('mbeducacion_registro_{ID_REUNION}');")
         st.rerun()
     st.stop()
 
 # --- 6. FORMULARIO DE REGISTRO ---
 st.title("Registro de Asistencia")
-st.subheader(f"Bienvenido al {NOMBRE_EVENTO}")
+st.subheader(f"Evento: {NOMBRE_EVENTO}")
 
 with st.form("registro_publico", clear_on_submit=True):
     nombre = st.text_input("Nombre Completo *")
-    col1, col2 = st.columns([1, 2])
-    with col1:
+    col_d1, col_d2 = st.columns([1, 2])
+    with col_d1:
         tipo_doc = st.selectbox("Tipo Doc *", ["C.C.", "NIT", "C.E.", "Pasaporte", "T.I.", "Otro"])
-    with col2:
+    with col_d2:
         doc_identidad = st.text_input("Número de Documento *")
 
     institucion = st.text_input("Institución / Empresa *")
@@ -111,22 +118,25 @@ with st.form("registro_publico", clear_on_submit=True):
     email = st.text_input("Correo Electrónico *")
     
     st.markdown("---")
-    st.write("🔒 **Habeas Data**")
-    with st.expander("Leer Autorización"):
-        st.write("Autorizo el tratamiento de mis datos para la gestión del servicio y envío de información comercial.")
+    st.write("🔒 **Tratamiento de Datos Personales**")
+    with st.expander("Ver detalles legales"):
+        st.write("Autorizo a MB Educación para el tratamiento de mis datos personales según la Ley 1581 de 2012.")
 
-    acepta = st.checkbox("He leído y autorizo el tratamiento de mis datos *")
-    acepta_promos = st.checkbox("Acepto envío de información comercial y productos")
+    acepta = st.checkbox("He leído y acepto la política de Habeas Data *")
+    acepta_promos = st.checkbox("Deseo recibir información de futuros cursos y productos de MB")
     
     boton_registro = st.form_submit_button("REGISTRARME E INGRESAR")
 
-# --- 7. LÓGICA DE VALIDACIÓN Y GUARDADO ---
+# --- 7. PROCESO DE REGISTRO Y REDIRECCIÓN ---
 if boton_registro:
-    errores = []
     if not nombre or not doc_identidad or not email or not acepta:
-        st.error("⚠️ Por favor completa todos los campos obligatorios y acepta los términos.")
+        st.error("⚠️ Completa los campos obligatorios (*) para continuar.")
     else:
         try:
+            # Volvemos a contar justo antes de guardar para evitar errores de último segundo
+            conteo_final = obtener_conteo_real()
+            url_final = LINK_ZOOM if conteo_final < CUPO_MAXIMO else LINK_YOUTUBE
+            
             with engine.begin() as conn:
                 conn.execute(text("""
                     INSERT INTO directorio_tratamiento 
@@ -136,14 +146,21 @@ if boton_registro:
                     "nom": nombre, "tdoc": tipo_doc, "doc": doc_identidad,
                     "inst": institucion, "rol": rol_cargo, "mail": email,
                     "env": 1 if acepta_promos else 0,
-                    "cnal": f"Registro Zoom - {ID_REUNION} - {time.strftime('%d/%m/%Y')}"
+                    "cnal": f"Registro Zoom - {ID_REUNION} - {time.strftime('%Y-%m-%d %H:%M')}"
                 })
 
+            # Guardamos persistencia en el navegador
             st_javascript(f"localStorage.setItem('mbeducacion_registro_{ID_REUNION}', 'true');")
-            st.success("✅ Registro exitoso.")
-            st.info(f"🔄 {mensaje_cupo}")
-            time.sleep(2)
-            st.markdown(f'<meta http-equiv="refresh" content="0; url={link_destino}">', unsafe_allow_html=True)
-                        
+            
+            st.success("✅ ¡Registro completado con éxito!")
+            st.write("Redirigiendo a la transmisión...")
+            
+            # Redirección automática por JavaScript (más confiable)
+            js_redir = f'window.location.href = "{url_final}";'
+            st_javascript(js_redir)
+            
+            # Respaldo por si JS falla
+            st.markdown(f'<meta http-equiv="refresh" content="1; url={url_final}">', unsafe_allow_html=True)
+            
         except Exception as e:
-            st.error(f"❌ Error al guardar: {e}")
+            st.error(f"❌ Error al procesar registro: {e}")
